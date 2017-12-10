@@ -281,4 +281,5 @@ class Syntactic extends ConverterSuite {
   // TODO: Uncomment once syntactic support inline
   // https://github.com/scalameta/paradise/issues/150
   //syntactic("inline def apply(a: Any) = meta { ??? }")
+  syntactic("class Foo @Inject() (cc: ControllerContexts) extends AbstractController(cc)")
 }

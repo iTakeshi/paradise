@@ -9,8 +9,6 @@ import scala.meta.dialects.Paradise211
 
 trait Expanders extends Converter { self: AnalyzerPlugins =>
 
-  import scala.{Seq => _}
-  import scala.collection.immutable.Seq
   import scala.util.control.ControlThrowable
   import global._
   import analyzer._
@@ -117,7 +115,7 @@ trait Expanders extends Converter { self: AnalyzerPlugins =>
                 abort(
                   "Something unexpected happened. Please report to https://github.com/scalameta/paradise/issues.")
               case tree :: Nil => tree
-              case list @ _ :: tail => m.Term.Block(list.asInstanceOf[Seq[m.Stat]])
+              case list @ _ :: tail => m.Term.Block(list.asInstanceOf[List[m.Stat]])
             }
             List(prefixArg) ++ targsArgs ++ vargssArgs ++ List(expandeesArg)
           }

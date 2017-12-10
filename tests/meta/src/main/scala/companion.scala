@@ -36,7 +36,7 @@ class companion extends StaticAnnotation {
 
     stats match {
       case Term.Block(Seq(classDefn: Defn.Class, objDefn: Defn.Object)) =>
-        Term.Block(scala.collection.immutable.Seq(extractClass(classDefn), extractObj(objDefn)))
+        Term.Block(List(extractClass(classDefn), extractObj(objDefn)))
       case classDefn: Defn.Class => extractClass(classDefn)
     }
   }

@@ -21,7 +21,7 @@ object LotsOfProjects extends ConverterSuite {
     s"${e.getClass.getSimpleName}: $details"
   }
 
-  def handleFile(file: CorpusFile): Seq[String] = {
+  def handleFile(file: CorpusFile): List[String] = {
     val code = file.read
     val result = Try(getConvertedMetaTree(code)) match {
       // Uncomment to investigate a specific error further.
@@ -36,7 +36,7 @@ object LotsOfProjects extends ConverterSuite {
       case _ =>
         "Success"
     }
-    Seq(result)
+    List(result)
   }
 
   def getResults: mutable.Buffer[String] = {

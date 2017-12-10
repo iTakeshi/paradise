@@ -1,4 +1,3 @@
-import scala.collection.immutable.Seq
 import scala.{meta => m}
 import scala.tools.cmd.CommandLineParser
 import scala.tools.nsc.{Global, CompilerCommand, Settings}
@@ -39,26 +38,31 @@ trait ConverterSuite extends FunSuiteLike {
           loop(x.get, y.get)
         case (x: None.type, y: None.type) =>
           true
-        case (xs: Seq[_], ys: Seq[_]) =>
-          xs.length == ys.length && xs.zip(ys).forall { case (x, y) => loop(x, y) }
+        case (xs: List[_], ys: List[_]) =>
+          (xs, ys) match {
+            case (Nil,             Nil) => true
+            case (List(Nil),       Nil) => true
+            case (Nil,       List(Nil)) => true
+            case _ => xs.length == ys.length && xs.zip(ys).forall { case (x, y) => loop(x, y) }
+          }
         case (x: Tree, y: Tree) =>
           def sameDesugaring = {
             // NOTE: Workaround for https://github.com/scalameta/scalameta/issues/519.
             object TermApply519 {
-              def unapply(tree: Tree): Option[(Term, Seq[Seq[Type]], Seq[Seq[Term.Arg]])] =
+              def unapply(tree: Tree): Option[(Term, List[List[Type]], List[List[Term]])] =
                 tree match {
-                  case q"$fun[..$targs](...$argss)" => Some((fun, Seq(targs), argss))
+                  case q"$fun[..$targs](...$argss)" => Some((fun, List(targs), argss))
                   case q"$fun(...$argss)" => Some((fun, Nil, argss))
                   case _ => None
                 }
             }
             object NestedTermAnnotated {
-              def flatTerm(t: Term, accum: Seq[Mod.Annot] = Nil): (Term, Seq[Mod.Annot]) =
+              def flatTerm(t: Term, accum: List[Mod.Annot] = Nil): (Term, List[Mod.Annot]) =
                 t match {
                   case Term.Annotate(t2, as) => flatTerm(t2, as ++ accum)
                   case _ => (t, accum)
                 }
-              def unapply(tree: Tree): Option[(Term, Seq[Mod.Annot])] = tree match {
+              def unapply(tree: Tree): Option[(Term, List[Mod.Annot])] = tree match {
                 case t: Term.Annotate => Some(flatTerm(t))
                 case _ => None
               }
@@ -66,7 +70,7 @@ trait ConverterSuite extends FunSuiteLike {
 
             try {
               (x, y) match {
-                case (TermApply519(q"$xlhs.$xop", xtargss, Seq(xargs)),
+                case (TermApply519(q"$xlhs.$xop", xtargss, List(xargs)),
                       q"$ylhs $yop [..$ytargs] (..$yargs)") =>
                   loop(xlhs, ylhs) && loop(xop, yop) &&
                     loop(xtargss.flatten, ytargs) && loop(xargs, yargs)
@@ -74,9 +78,9 @@ trait ConverterSuite extends FunSuiteLike {
                   true
                 case (q"{ $xstat }", q"$ystat") =>
                   loop(xstat, ystat)
-                case (ctor"$xctor(...${Seq()})", ctor"$yctor(...${Seq(Seq())})") =>
+                case (q"$xctor(...${List()})", q"$yctor(...${List(List())})") =>
                   loop(xctor, yctor)
-                case (ctor"$xctor(...${Seq(Seq())})", ctor"$yctor(...${Seq()})") =>
+                case (q"$xctor(...${List(List())})", q"$yctor(...${List()})") =>
                   loop(xctor, yctor)
                 case (p"$xpat @ _", p"$ypat") =>
                   loop(xpat, ypat)
@@ -161,8 +165,8 @@ trait ConverterSuite extends FunSuiteLike {
 
   def syntactic(code: String): Unit = {
     test(code.trim) {
-      val convertedMetaTree = getConvertedMetaTree(code)
       val parsedMetaTree = getParsedMetaTree(code)
+      val convertedMetaTree = getConvertedMetaTree(code)
       try {
         checkMismatchesModuloDesugarings(parsedMetaTree, convertedMetaTree)
       } catch {

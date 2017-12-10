@@ -2,7 +2,6 @@ package org.scalameta.paradise
 package converters
 
 import scala.collection.{immutable, mutable}
-import scala.collection.immutable.Seq
 import scala.reflect.{classTag, ClassTag}
 import scala.compat.Platform.EOL
 import scala.meta.prettyprinters._
@@ -33,12 +32,12 @@ trait ToMtree { self: Converter =>
               // ============ TERMS ============
 
               case l.TermThis(lname) =>
-                val mname = lname.toMtree[m.Name.Qualifier]
+                val mname = lname.toMtree[m.Name]
                 m.Term.This(mname)
 
               case l.TermSuper(lthis, lsuper) =>
-                val mthis = lthis.toMtree[m.Name.Qualifier]
-                val msuper = lsuper.toMtree[m.Name.Qualifier]
+                val mthis = lthis.toMtree[m.Name]
+                val msuper = lsuper.toMtree[m.Name]
                 m.Term.Super(mthis, msuper)
 
               case l.TermName(lvalue) =>
@@ -60,14 +59,14 @@ trait ToMtree { self: Converter =>
 
               case l.TermApply(lfun, largs) =>
                 val mfun = lfun.toMtree[m.Term]
-                val margs = largs.toMtrees[m.Term.Arg]
+                val margs = largs.toMtrees[m.Term]
                 m.Term.Apply(mfun, margs)
 
               case l.TermApplyInfix(llhs, lop, ltargs, largs) =>
                 val mlhs = llhs.toMtree[m.Term]
                 val mop = lop.toMtree[m.Term.Name]
                 val mtargs = ltargs.toMtrees[m.Type]
-                val margs = largs.toMtrees[m.Term.Arg]
+                val margs = largs.toMtrees[m.Term]
                 m.Term.ApplyInfix(mlhs, mop, mtargs, margs)
 
               case l.TermApplyType(lfun, ltargs) =>
@@ -121,7 +120,7 @@ trait ToMtree { self: Converter =>
                 val mexpr = lexpr.toMtree[m.Term]
                 val mcatches = lcatches.toMtrees[m.Case]
                 val mfinally = lfinally.toMtreeopt[m.Term]
-                m.Term.TryWithCases(mexpr, mcatches, mfinally)
+                m.Term.Try(mexpr, mcatches, mfinally)
 
               case l.TermFunction(lparams, lbody) =>
                 val mparams = lparams.toMtrees[m.Term.Param]
@@ -147,25 +146,28 @@ trait ToMtree { self: Converter =>
 
               case l.TermNew(ltempl) =>
                 val mtempl = ltempl.toMtree[m.Template]
-                m.Term.New(mtempl)
+                if (!ltempl.stats.isDefined && mtempl.early.isEmpty)
+                  m.Term.New(mtempl.inits.head)
+                else
+                  m.Term.NewAnonymous(mtempl)
 
               case l.TermEta(lexpr) =>
                 val mexpr = lexpr.toMtree[m.Term]
                 m.Term.Eta(mexpr)
 
               case l.TermArg.Named(lname, lrhs) =>
-                val mname = lname.toMtree[m.Term.Name]
-                val mrhs = lrhs.toMtree[m.Term.Arg]
-                m.Term.Arg.Named(mname, mrhs)
+                val mname = lname.toMtree[m.Term]
+                val mrhs = lrhs.toMtree[m.Term]
+                m.Term.Assign(mname, mrhs)
 
               case l.TermArg.Repeated(lident) =>
                 val mterm = lident.toMtree[m.Term]
-                m.Term.Arg.Repeated(mterm)
+                m.Term.Repeated(mterm)
 
               case l.TermParamDef(lmods, lname, ltpt, ldefault) =>
                 val mmods = lmods.toMtrees[m.Mod]
-                val mname = lname.toMtree[m.Term.Param.Name]
-                val mtpt = ltpt.toMtreeopt[m.Type.Arg]
+                val mname = lname.toMtree[m.Name]
+                val mtpt = ltpt.toMtreeopt[m.Type]
                 val mdefault = ldefault.toMtreeopt[m.Term]
                 m.Term.Param(mmods, mname, mtpt, mdefault)
 
@@ -193,11 +195,11 @@ trait ToMtree { self: Converter =>
 
               case l.TypeArgByName(ltpe) =>
                 val mtpe = ltpe.toMtree[m.Type]
-                m.Type.Arg.ByName(mtpe)
+                m.Type.ByName(mtpe)
 
               case l.TypeArgRepeated(ltpe) =>
                 val mtpe = ltpe.toMtree[m.Type]
-                m.Type.Arg.Repeated(mtpe)
+                m.Type.Repeated(mtpe)
 
               case l.TypeApply(ltpt, largs) =>
                 val mtpt = ltpt.toMtree[m.Type]
@@ -211,7 +213,7 @@ trait ToMtree { self: Converter =>
                 m.Type.ApplyInfix(mlhs, mop, mrhs)
 
               case l.TypeFunction(lparams, lres) =>
-                val mparams = lparams.toMtrees[m.Type.Arg]
+                val mparams = lparams.toMtrees[m.Type]
                 val mres = lres.toMtree[m.Type]
                 m.Type.Function(mparams, mres)
 
@@ -246,7 +248,7 @@ trait ToMtree { self: Converter =>
 
               case l.TypeParamDef(lmods, lname, ltparams, ltbounds, lvbounds, lcbounds) =>
                 val mmods = lmods.toMtrees[m.Mod]
-                val mname = lname.toMtree[m.Type.Param.Name]
+                val mname = lname.toMtree[m.Name]
                 val mtparams = ltparams.toMtrees[m.Type.Param]
                 val mtbounds = ltbounds.toMtree[m.Type.Bounds]
                 val mvbounds = lvbounds.toMtrees[m.Type]
@@ -257,18 +259,18 @@ trait ToMtree { self: Converter =>
 
               case l.PatVarTerm(lname) =>
                 val mname = lname.toMtree[m.Term.Name]
-                m.Pat.Var.Term(mname)
+                m.Pat.Var(mname)
 
               case l.PatVarType(lname) =>
                 val mname = lname.toMtree[m.Type.Name]
-                m.Pat.Var.Type(mname)
+                m.Type.Var(mname)
 
               case l.PatWildcard() =>
                 m.Pat.Wildcard()
 
               case l.PatBind(llhs, lrhs) =>
-                val mlhs = llhs.toMtree[m.Pat.Var.Term]
-                val mrhs = lrhs.toMtree[m.Pat.Arg]
+                val mlhs = llhs.toMtree[m.Pat.Var]
+                val mrhs = lrhs.toMtree[m.Pat]
                 // NOTE: This pattern match goes against the rules of ToMtree.
                 // Typically, the idea is that all non-trivial logic goes into extractors in LogicalTree.
                 // However, in this case, that'd be too complicated engineering-wise, so I make an exception.
@@ -288,9 +290,8 @@ trait ToMtree { self: Converter =>
 
               case l.PatExtract(lref, ltargs, largs) =>
                 val mref = lref.toMtree[m.Term.Ref]
-                val mtargs = ltargs.toMtrees[m.Pat.Type]
-                val margs = largs.toMtrees[m.Pat.Arg]
-                m.Pat.Extract(mref, mtargs, margs)
+                val margs = largs.toMtrees[m.Pat]
+                m.Pat.Extract(mref, margs)
 
               case l.PatInterpolate(lprefix, lparts, largs) =>
                 val mprefix = lprefix.toMtree[m.Term.Name]
@@ -300,33 +301,34 @@ trait ToMtree { self: Converter =>
 
               case l.PatTyped(llhs, lrhs) =>
                 val mlrhs = llhs.toMtree[m.Pat]
-                val mrhs = lrhs.toMtree[m.Pat.Type]
+                val mrhs = lrhs.toMtree[m.Type]
                 m.Pat.Typed(mlrhs, mrhs)
 
               case l.PatArgSeqWildcard() =>
-                m.Pat.Arg.SeqWildcard()
+                m.Pat.SeqWildcard()
 
               case l.PatTypeWildcard() =>
-                m.Pat.Type.Wildcard()
+                m.Pat.Wildcard()
+                m.Type.Placeholder(m.Type.Bounds(None, None))
 
               case l.PatTypeAnnotate(ltpe, lannots) =>
-                val mtpe = ltpe.toMtree[m.Pat.Type]
+                val mtpe = ltpe.toMtree[m.Type]
                 val mannots = lannots.toMtrees[m.Mod.Annot]
-                m.Pat.Type.Annotate(mtpe, mannots)
+                m.Type.Annotate(mtpe, mannots)
 
               case l.PatTypeApply(ltpt, largs) =>
-                val mtpt = ltpt.toMtree[m.Pat.Type]
-                val margs = largs.toMtrees[m.Pat.Type]
-                m.Pat.Type.Apply(mtpt, margs)
+                val mtpt = ltpt.toMtree[m.Type]
+                val margs = largs.toMtrees[m.Type]
+                m.Type.Apply(mtpt, margs)
 
               case l.PatTypeWith(llhs, lrhs) =>
-                val mlhs = llhs.toMtree[m.Pat.Type]
-                val mrhs = lrhs.toMtree[m.Pat.Type]
-                m.Pat.Type.With(mlhs, mrhs)
+                val mlhs = llhs.toMtree[m.Type]
+                val mrhs = lrhs.toMtree[m.Type]
+                m.Type.With(mlhs, mrhs)
 
               // ============ LITERALS ============
               case l.Literal(null) =>
-                m.Lit.Null(null)
+                m.Lit.Null()
               case l.Literal(value: Int) =>
                 m.Lit.Int(value)
               case l.Literal(value: Double) =>
@@ -344,7 +346,7 @@ trait ToMtree { self: Converter =>
               case l.Literal(value: Boolean) =>
                 m.Lit.Boolean(value)
               case l.Literal(value: Unit) =>
-                m.Lit.Unit(value)
+                m.Lit.Unit()
               case l.Literal(value: String) =>
                 m.Lit.String(value)
               case l.Literal(value: scala.Symbol) =>
@@ -353,13 +355,13 @@ trait ToMtree { self: Converter =>
               // ============ DECLS ============
               case l.DeclVal(lmods, lpats, ldecltpe) =>
                 val mmods = lmods.toMtrees[m.Mod]
-                val mpats = lpats.toMtrees[m.Pat.Var.Term]
+                val mpats = lpats.toMtrees[m.Pat.Var]
                 val mdecltpe = ldecltpe.toMtree[m.Type]
                 m.Decl.Val(mmods, mpats, mdecltpe)
 
               case l.DeclVar(lmods, lpats, ldecltpe) =>
                 val mmods = lmods.toMtrees[m.Mod]
-                val mpats = lpats.toMtrees[m.Pat.Var.Term]
+                val mpats = lpats.toMtrees[m.Pat.Var]
                 val mdecltpe = ldecltpe.toMtree[m.Type]
                 m.Decl.Var(mmods, mpats, mdecltpe)
 
@@ -434,7 +436,7 @@ trait ToMtree { self: Converter =>
                 val mctor = {
                   // TODO: This conditional expression is non-idiomatic.
                   // We should strive to move all non-trivial logic to LogicalTrees.
-                  if (lctor == g.EmptyTree) m.Ctor.Primary(Nil, m.Ctor.Name("this"), Nil)
+                  if (lctor == g.EmptyTree) m.Ctor.Primary(Nil, m.Name(""), Nil)
                   else lctor.toMtree[m.Ctor.Primary]
                 }
                 val mimpl = limpl.toMtree[m.Template]
@@ -465,62 +467,65 @@ trait ToMtree { self: Converter =>
                 val mmods = lmods.toMtrees[m.Mod]
                 // TODO: fixme https://github.com/xeno-by/scalameta/blob/7b9632ff889268a1c8c7c71432998e553146eab0/scalameta/parsers/src/main/scala/scala/meta/internal/parsers/ScalametaParser.scala#L3096
                 // val mname = lname.toMtree[m.Ctor.Name]
-                val mname = m.Ctor.Name("this")
+                val mname = m.Name("")
                 val mparamss = lparamss.toMtreess[m.Term.Param]
                 m.Ctor.Primary(mmods, mname, mparamss)
 
               case l.SecondaryCtorDef(lmods, lname, lparamss, lbody) =>
+                def loop(mbody: m.Term.Apply): List[List[m.Term]] = mbody match {
+                  case m.Term.Apply(mapply: m.Term.Apply, args) => loop(mapply) ++ List(args)
+                  case m.Term.Apply(_,                    args) => List(args)
+                }
                 val mmods = lmods.toMtrees[m.Mod]
-                val mname = m.Ctor.Name("this")
+                val mname = m.Name("")
                 val mparamss = lparamss.toMtreess[m.Term.Param]
-                val mbody = lbody.toMtree[m.Term]
-                m.Ctor.Secondary(mmods, mname, mparamss, mbody)
+                val margss = loop(lbody.toMtree[m.Term.Apply])
+                m.Ctor.Secondary(mmods, mname, mparamss, m.Init(
+                  m.Type.Singleton(m.Term.This(m.Name(""))), m.Name(""), margss
+                ), Nil)
 
               case l.CtorName(lvalue) =>
-                m.Ctor.Name(lvalue)
+                if (lvalue == "this")
+                  m.Term.This(m.Name(""))
+                else
+                  m.Name(lvalue)
+
               case l.CtorIdent(lname) =>
-                lname.toMtree[m.Ctor.Name]
+                lname.toMtree[m.Name]
 
               // ============ TEMPLATES ============
 
               case l.Template(learly, lparents, lself, lstats) =>
                 val mearly = learly.toMtrees[m.Stat]
-                val mparents = lparents.toMtrees[m.Ctor.Call]
-                val mself = lself.toMtree[m.Term.Param]
+                val mparents = lparents.toMtrees[m.Init].map(_.copy(name = m.Name("")))
+                val mself = lself.toMtree[m.Self]
                 val mstats = lstats.map(_.toMtrees[m.Stat])
-                m.Template(mearly, mparents, mself, mstats)
+                m.Template(mearly, mparents, mself, mstats.getOrElse(Nil))
 
               case l.Parent(ltpt, lctor, largss) =>
                 val mtpt = ltpt.toMtree[m.Type]
-                val mctor = mtpt.ctorRef(lctor.toMtree[m.Ctor.Name])
-                val margss = largss.toMtreess[m.Term.Arg]
-                margss.foldLeft(mctor)((mcurr, margs) => {
-                  m.Term.Apply(mcurr, margs)
-                })
+                val mctor = lctor.toMtree[m.Name]
+                val margss = largss.toMtreess[m.Term]
+                m.Init(mtpt, mctor, margss)
 
               case l.Self(lname, ltpt) =>
-                val mname = lname.toMtree[m.Term.Param.Name]
+                val mname = lname.toMtree[m.Name]
                 val mtpt = if (ltpt.nonEmpty) Some(ltpt.toMtree[m.Type]) else None
-                m.Term.Param(Nil, mname, mtpt, None)
+                m.Self(mname, mtpt)
 
               // ============ MODIFIERS ============
 
               case l.Annotation(lapply) =>
                 // scala.reflect uses Term.New here, but we need only its parent
-                val m.Term.New(
-                  m.Template(Nil,
-                             Seq(mparent),
-                             m.Term.Param(Nil, m.Name.Anonymous(), None, None),
-                             None)) =
-                  lapply.toMtree[m.Term.New]
-                m.Mod.Annot(mparent)
+                val m.Term.New(init) = lapply.toMtree[m.Term.New]
+                m.Mod.Annot(init)
 
               case l.Private(lwithin) =>
-                val mwithin = lwithin.toMtree[m.Name.Qualifier]
+                val mwithin = lwithin.toMtree[m.Ref]
                 m.Mod.Private(mwithin)
 
               case l.Protected(lwithin) =>
-                val mwithin = lwithin.toMtree[m.Name.Qualifier]
+                val mwithin = lwithin.toMtree[m.Ref]
                 m.Mod.Protected(mwithin)
 
               case l.Implicit() =>
@@ -601,11 +606,11 @@ trait ToMtree { self: Converter =>
       }
 
       implicit class RichTreesToMtrees(gtrees: List[g.Tree]) {
-        def toMtrees[T <: m.Tree: ClassTag]: Seq[T] = gtrees.map(_.toMtree[T])
+        def toMtrees[T <: m.Tree: ClassTag]: List[T] = gtrees.map(_.toMtree[T])
       }
 
       implicit class RichTreessToMtreess(gtreess: List[List[g.Tree]]) {
-        def toMtreess[T <: m.Tree: ClassTag]: Seq[Seq[T]] = gtreess.map(_.toMtrees[T])
+        def toMtreess[T <: m.Tree: ClassTag]: List[List[T]] = gtreess.map(_.toMtrees[T])
       }
 
       var backtrace = List[g.Tree]()

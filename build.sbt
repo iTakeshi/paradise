@@ -6,7 +6,7 @@ import scala.xml.transform.{RewriteRule, RuleTransformer}
 import org.scalameta.os
 
 lazy val LanguageVersions = Seq("2.11.12", "2.12.4")
-lazy val MetaVersion = "1.8.0"
+lazy val MetaVersion = "2.1.3-1-32d3e683-20171209-2159"
 lazy val LanguageVersion = LanguageVersions.last
 lazy val LibraryVersion = sys.props.getOrElseUpdate("paradise.version", os.version.preRelease())
 
@@ -112,6 +112,7 @@ lazy val sharedSettings = Def.settings(
   organization := "org.scalameta",
   resolvers += Resolver.sonatypeRepo("snapshots"),
   resolvers += Resolver.bintrayRepo("scalameta", "maven"),
+  resolvers += Resolver.bintrayRepo("itakeshi", "maven"),
   resolvers += Resolver.sonatypeRepo("releases"),
   libraryDependencies += "org.scalameta" %% "scalameta" % MetaVersion,
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test",
