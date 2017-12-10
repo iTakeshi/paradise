@@ -164,38 +164,8 @@ lazy val usePluginSettings = Seq(
 
 lazy val publishableSettings = Def.settings(
   sharedSettings,
-  publishTo := {
-    if (sys.props("scalameta.publish") == "sonatype")
-      Some("releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2")
-    else
-      publishTo.in(bintray).value
-  },
-  bintrayOrganization := Some("scalameta"),
   publishArtifact.in(Compile) := true,
-  publishArtifact.in(Test) := false, {
-    val publishingEnabled: Boolean = {
-      if (!new File(sys.props("user.home") + "/.bintray/.credentials").exists) false
-      else if (sys.props("sbt.prohibit.publish") != null) false
-      else if (sys.env.contains("CI_PULL_REQUEST")) false
-      else true
-    }
-    if (sys.props("disable.publish.status") == null) {
-      sys.props("disable.publish.status") = ""
-      val publishingStatus = if (publishingEnabled) "enabled" else "disabled"
-      println(s"[info] Welcome to paradise $LibraryVersion (publishing $publishingStatus)")
-    }
-    publish.in(Compile) := {
-      if (publishingEnabled) {
-        Def.task {
-          publish.value
-        }
-      } else {
-        Def.task {
-          sys.error("Undefined publishing strategy"); ()
-        }
-      }
-    }
-  },
+  publishArtifact.in(Test) := false,
   publishMavenStyle := true,
   pomIncludeRepository := { x =>
     false
