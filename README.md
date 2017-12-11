@@ -17,7 +17,7 @@ This repository is created for those who want to use scalameta-based macro syste
 In your `build.sbt`,
 ```scala
 resolvers += Resolver.bintrayRepo("itakeshi", "maven"),
-libraryDependencies += "org.scalameta" %% "scalameta" % "2.1.3-1-32d3e683-20171209-2159" // required to bring `inline` back with scalameta
+libraryDependencies += "org.scalameta" %% "scalameta" % "2.1.3-32-bc734dc0-20171211-2240" // required to bring `inline` back with scalameta
 addCompilerPlugin("org.scalameta" %% "paradise" % "3.0.0-324-eefdb72a.1512909854385" cross CrossVersion.full)
 ```
 
